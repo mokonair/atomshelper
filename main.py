@@ -1,3 +1,6 @@
+import time
+
+import requests.exceptions
 import telebot
 from telebot import types
 import os
@@ -99,9 +102,17 @@ def callback_inline(call):
                 file_chat_id = open('chats.txt', 'r')
                 for line in file_chat_id.readlines():
                     if not isinstance(file, bytes):
-                        bot.send_message(line, text, reply_markup=None, parse_mode='markdown')
+                        try:
+                            bot.send_message(line, text, reply_markup=None, parse_mode='markdown')
+                        except requests.exceptions.ReadTimeout:
+                            time.sleep(15)
+                            bot.send_message(line, text, reply_markup=None, parse_mode='markdown')
                     else:
-                        bot.send_photo(line, file, reply_markup=None, caption=text, parse_mode='markdown')
+                        try:
+                            bot.send_photo(line, file, reply_markup=None, caption=text, parse_mode='markdown')
+                        except requests.exceptions.ReadTimeout:
+                            time.sleep(15)
+                            bot.send_photo(line, file, reply_markup=None, caption=text, parse_mode='markdown')
                 markup = types.InlineKeyboardMarkup()
                 markup.add(types.InlineKeyboardButton('📝 Создать пост', callback_data='input_text'))
                 if not isinstance(file, bytes):
@@ -111,7 +122,7 @@ def callback_inline(call):
                 else:
                     bot.edit_message_caption(chat_id=call.message.chat.id, message_id=call.message.message_id,
                                              caption=f'*Пост отправлен!\nТекст поста: \n*{text}',
-                                             reply_markup=markup, parse_mode='markdown')
+                                             parse_mode='markdown')
                 file_chat_id.close()
                 text = None
                 file = None
@@ -186,4 +197,8 @@ def delete_from_whitelist(message):
     file_whitelist.close()
 
 
-bot.infinity_polling()
+while True:
+    try:
+        bot.infinity_polling(timeout=123)
+    except Exception as e:
+        time.sleep(15)
